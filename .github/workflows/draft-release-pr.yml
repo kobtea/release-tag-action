@@ -1,0 +1,32 @@
+name: Draft Release PR
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  draft-pr:
+    name: Create draft release PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create draft PR if not exists
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(cat VERSION)
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid VERSION: $VERSION"; exit 1; }
+          BASE_BRANCH="release/v${VERSION%%.*}"
+          existing=$(gh pr list --base "$BASE_BRANCH" --head master --state open --json number --jq length)
+          if [ "$existing" -eq 0 ]; then
+            gh pr create \
+              --base "$BASE_BRANCH" \
+              --head master \
+              --title "release: v${VERSION}" \
+              --body "Merge to trigger release tag v${VERSION}." \
+              --draft
+          fi
